@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, DatabaseZap, Gauge, MapPin } from "lucide-react";
+import { Activity, ClipboardCheck, DatabaseZap, Gauge, MapPin } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { Address } from "viem";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/Button";
+import { DataRow } from "@/components/ui/DataRow";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { DurationSelector } from "@/components/policy/DurationSelector";
 import { EventLevelCard } from "@/components/policy/EventLevelCard";
@@ -24,6 +25,7 @@ import { usePurchasePolicy } from "@/hooks/useParametrixWrites";
 import { auditPurchaseSelection } from "@/lib/audit/purchaseAudit";
 import {
   PREMIUM_AND_COVERAGE,
+  EVENT_LEVELS,
   POLICY_TYPES,
   SUPPORTED_LOCATIONS,
   THRESHOLD_REGISTRY_URL,
@@ -41,7 +43,7 @@ import {
 
 function getPurchaseErrorMessage(error: unknown) {
   if (!(error instanceof Error)) {
-    return "The purchase transaction did not complete.";
+    return "Purchase failed. Your policy was not created. Please try again.";
   }
 
   const message = error.message.toLowerCase();
@@ -62,7 +64,7 @@ function getPurchaseErrorMessage(error: unknown) {
     return "The selected coverage terms are not available right now.";
   }
 
-  return "The purchase transaction did not complete.";
+  return "Purchase failed. Your policy was not created. Please try again.";
 }
 
 function getPolicyIdFromPurchaseResult(result: unknown) {
@@ -113,10 +115,25 @@ function wait(ms: number) {
   });
 }
 
+type CheckoutStep = "configure" | "review";
+
+function formatThresholdPreview(
+  thresholdPreview?: { threshold: number; unit: string },
+) {
+  if (!thresholdPreview) {
+    return "Checking";
+  }
+
+  return `${thresholdPreview.threshold}${
+    thresholdPreview.unit === "°C" ? "" : " "
+  }${thresholdPreview.unit}`;
+}
+
 export function BuyPolicyForm() {
   const { address, isConnected } = useAccount();
   const queryClient = useQueryClient();
   const purchasePolicy = usePurchasePolicy();
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("configure");
   const [transactionError, setTransactionError] = useState("");
   const [transactionOpen, setTransactionOpen] = useState(false);
   const [transactionStage, setTransactionStage] =
@@ -174,6 +191,21 @@ export function BuyPolicyForm() {
           unit: registryValidation.terms.unit,
         }
       : undefined;
+  const selectedLocation =
+    SUPPORTED_LOCATIONS.find((location) => location.id === locationId) ??
+    SUPPORTED_LOCATIONS[0];
+  const selectedPolicyType =
+    POLICY_TYPES.find((type) => type.id === policyType) ?? POLICY_TYPES[0];
+  const selectedEventLevel =
+    EVENT_LEVELS.find((level) => level.id === eventLevel) ?? EVENT_LEVELS[0];
+  const thresholdLabel = formatThresholdPreview(thresholdPreview);
+  const selectionValidation = policyFormSchema.safeParse({
+    durationDays,
+    eventLevel,
+    locationId,
+    policyType,
+  });
+  const isSelectionValid = selectionValidation.success;
 
   const getCurrentPolicyIds = async () => {
     if (!address) {
@@ -259,9 +291,26 @@ export function BuyPolicyForm() {
     return undefined;
   };
 
+  const moveToReview = (values: PolicyFormValues) => {
+    const purchaseAudit = auditPurchaseSelection(values);
+
+    if (!purchaseAudit.ok) {
+      toast.error("Complete your coverage selections to continue.");
+      return;
+    }
+
+    if (registryMismatch) {
+      toast.error("Selected coverage terms are not available right now.");
+      return;
+    }
+
+    setTransactionError("");
+    setCheckoutStep("review");
+  };
+
   const onSubmit = async (values: PolicyFormValues) => {
     if (!isConnected) {
-      toast.error("Connect your wallet to prepare coverage.");
+      toast.error("Connect your wallet to confirm and pay.");
       return;
     }
 
@@ -371,21 +420,37 @@ export function BuyPolicyForm() {
       ["accepted", "review", "submitting", "verifying", "wallet"].includes(
         transactionStage,
       ));
-  const submitLabel = !isConnected
-    ? "Buy Coverage"
-    : transactionStage === "review" || transactionStage === "wallet"
-      ? "Preparing purchase…"
-      : transactionStage === "submitting" || purchasePolicy.isPending
-        ? "Creating policy…"
-        : transactionStage === "accepted" || transactionStage === "verifying"
+  const canReviewCoverage =
+    isSelectionValid && !registryMismatch && !isTransactionActive;
+  const reviewButtonLabel = isSelectionValid
+    ? "Review Coverage"
+    : "Complete selections to continue";
+  const confirmButtonLabel =
+    transactionOpen && transactionStage === "review"
+      ? "Preparing transaction…"
+      : transactionOpen && transactionStage === "wallet"
+        ? "Confirm in wallet"
+        : transactionStage === "submitting" ||
+          transactionStage === "accepted" ||
+          transactionStage === "verifying" ||
+          transactionStage === "submitted" ||
+          purchasePolicy.isPending
           ? "Creating policy…"
-          : transactionStage === "completed"
-            ? "Coverage active"
-            : transactionStage === "submitted"
-              ? "Creating policy…"
-              : transactionStage === "failed"
-                ? "Try Again"
-                : "Buy Coverage";
+          : "Confirm & Pay";
+  const handleMoveToReview = handleSubmit(moveToReview);
+  const handleCheckoutSubmit = handleSubmit((values) => {
+    if (checkoutStep === "configure") {
+      moveToReview(values);
+      return;
+    }
+
+    return onSubmit(values);
+  });
+  const handleEditCoverage = () => {
+    if (!isTransactionActive) {
+      setCheckoutStep("configure");
+    }
+  };
   const modalPrimaryAction =
     transactionStage === "completed" || transactionStage === "submitted"
       ? {
@@ -409,128 +474,245 @@ export function BuyPolicyForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleCheckoutSubmit}>
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <motion.div
             animate={{ opacity: 1, y: 0 }}
             initial={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.28 }}
           >
-            <SectionCard className="p-7">
-              <div className="flex items-center gap-3">
-                <Activity className="h-5 w-5 text-cyan" />
-                <h2 className="text-xl font-semibold text-text">
-                  Configure Coverage
-                </h2>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                {buyPageContent.description}
-              </p>
+            <div className="mb-4 flex flex-wrap gap-2">
+              <span
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  checkoutStep === "configure"
+                    ? "border-cyan/40 bg-cyan/10 text-cyan"
+                    : "border-white/10 bg-white/[0.03] text-slate-300"
+                }`}
+              >
+                1. Configure Coverage
+              </span>
+              <span
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  checkoutStep === "review"
+                    ? "border-cyan/40 bg-cyan/10 text-cyan"
+                    : "border-white/10 bg-white/[0.03] text-slate-300"
+                }`}
+              >
+                2. Review Coverage
+              </span>
+            </div>
 
-              <label className="mt-6 block text-sm font-semibold text-text">
-                <span className="flex items-center gap-2">
-                  <span className="text-cyan">1.</span>
-                  <MapPin className="h-4 w-4 text-cyan" />
-                  Location
-                </span>
-                <select
-                  className="mt-3 w-full rounded-lg border border-white/10 bg-base px-4 py-3 text-sm text-text outline-none transition focus:border-cyan/60"
-                  {...register("locationId")}
-                >
-                  {SUPPORTED_LOCATIONS.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {errors.locationId ? (
-                <p className="mt-2 text-sm text-coral">
-                  {errors.locationId.message}
-                </p>
-              ) : null}
-
-              <div className="mt-7">
-                <p className="flex items-center gap-2 text-sm font-semibold text-text">
-                  <span className="text-cyan">2.</span>
-                  <DatabaseZap className="h-4 w-4 text-cyan" />
-                  Coverage Type
-                </p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {POLICY_TYPES.map((policyTypeOption) => (
-                    <PolicyTypeCard
-                      key={policyTypeOption.id}
-                      onSelect={(nextType) =>
-                        setValue("policyType", nextType, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      selected={policyType === policyTypeOption.id}
-                      type={policyTypeOption.id}
-                    />
-                  ))}
+            {checkoutStep === "configure" ? (
+              <SectionCard className="p-7">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-cyan" />
+                  <h2 className="text-xl font-semibold text-text">
+                    Configure Coverage
+                  </h2>
                 </div>
-              </div>
-
-              <div className="mt-7">
-                <p className="flex items-center gap-2 text-sm font-semibold text-text">
-                  <span className="text-cyan">3.</span>
-                  <Gauge className="h-4 w-4 text-cyan" />
-                  Event Level
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  {buyPageContent.description}
                 </p>
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  {PREMIUM_AND_COVERAGE.map((option) => (
-                    <EventLevelCard
-                      key={option.level}
-                      coverageDisplay={option.coverageDisplay}
-                      label={option.shortLabel}
-                      level={option.level}
-                      onSelect={(nextLevel) =>
-                        setValue("eventLevel", nextLevel, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      premiumDisplay={option.premiumDisplay}
-                      selected={eventLevel === option.level}
-                    />
-                  ))}
+
+                <label className="mt-6 block text-sm font-semibold text-text">
+                  <span className="flex items-center gap-2">
+                    <span className="text-cyan">1.</span>
+                    <MapPin className="h-4 w-4 text-cyan" />
+                    Location
+                  </span>
+                  <select
+                    className="mt-3 w-full rounded-lg border border-white/10 bg-base px-4 py-3 text-sm text-text outline-none transition focus:border-cyan/60"
+                    {...register("locationId")}
+                  >
+                    {SUPPORTED_LOCATIONS.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {errors.locationId ? (
+                  <p className="mt-2 text-sm text-coral">
+                    {errors.locationId.message}
+                  </p>
+                ) : null}
+
+                <div className="mt-7">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-text">
+                    <span className="text-cyan">2.</span>
+                    <DatabaseZap className="h-4 w-4 text-cyan" />
+                    Coverage Type
+                  </p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {POLICY_TYPES.map((policyTypeOption) => (
+                      <PolicyTypeCard
+                        key={policyTypeOption.id}
+                        onSelect={(nextType) =>
+                          setValue("policyType", nextType, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        selected={policyType === policyTypeOption.id}
+                        type={policyTypeOption.id}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-7">
-                <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
-                  <span className="text-cyan">4.</span>
-                  Duration
-                </p>
-                <DurationSelector
-                  onChange={(nextDuration) =>
-                    setValue("durationDays", nextDuration, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    })
-                  }
-                  value={durationDays}
-                />
-              </div>
-            </SectionCard>
+                <div className="mt-7">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-text">
+                    <span className="text-cyan">3.</span>
+                    <Gauge className="h-4 w-4 text-cyan" />
+                    Event Level
+                  </p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    {PREMIUM_AND_COVERAGE.map((option) => (
+                      <EventLevelCard
+                        key={option.level}
+                        coverageDisplay={option.coverageDisplay}
+                        label={option.shortLabel}
+                        level={option.level}
+                        onSelect={(nextLevel) =>
+                          setValue("eventLevel", nextLevel, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        premiumDisplay={option.premiumDisplay}
+                        selected={eventLevel === option.level}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-7">
+                  <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
+                    <span className="text-cyan">4.</span>
+                    Duration
+                  </p>
+                  <DurationSelector
+                    onChange={(nextDuration) =>
+                      setValue("durationDays", nextDuration, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    value={durationDays}
+                  />
+                </div>
+
+                <div className="mt-8 flex flex-col gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="max-w-md text-sm leading-6 text-muted">
+                    Review your coverage terms before opening your wallet.
+                  </p>
+                  <Button
+                    className="justify-center"
+                    disabled={!canReviewCoverage}
+                    onClick={handleMoveToReview}
+                  >
+                    {reviewButtonLabel}
+                  </Button>
+                </div>
+              </SectionCard>
+            ) : (
+              <SectionCard className="p-7">
+                <div className="flex items-start gap-3">
+                  <span className="rounded-lg border border-cyan/25 bg-cyan/10 p-2 text-cyan">
+                    <ClipboardCheck className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-xl font-semibold text-text">
+                      Review Coverage
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Confirm your selected coverage before continuing.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-7 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <h3 className="text-sm font-semibold text-text">
+                    Coverage Details
+                  </h3>
+                  <dl className="mt-4">
+                    <DataRow label="Location" value={selectedLocation.label} />
+                    <DataRow
+                      label="Coverage Type"
+                      value={selectedPolicyType.label}
+                    />
+                    <DataRow
+                      label="Event Level"
+                      value={selectedEventLevel.label}
+                    />
+                    <DataRow
+                      label="Coverage Period"
+                      value={`${durationDays} days`}
+                    />
+                    <DataRow label="Trigger Threshold" value={thresholdLabel} />
+                  </dl>
+                </div>
+
+                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <h3 className="text-sm font-semibold text-text">
+                    What happens next
+                  </h3>
+                  <ol className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
+                    {[
+                      "Confirm the transaction in your wallet",
+                      "Parametrix creates your policy",
+                      "Weather data is checked during the coverage period",
+                      "Eligible payouts become claimable if the trigger is met",
+                    ].map((item, index) => (
+                      <li className="flex gap-3" key={item}>
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-cyan/25 bg-cyan/10 text-xs font-semibold text-cyan">
+                          {index + 1}
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="mt-8 border-t border-white/10 pt-6">
+                  <Button
+                    disabled={isTransactionActive}
+                    onClick={handleEditCoverage}
+                    variant="secondary"
+                  >
+                    Edit Coverage
+                  </Button>
+                </div>
+              </SectionCard>
+            )}
           </motion.div>
 
           <div className="space-y-5 xl:sticky xl:top-24 xl:self-start">
             <PolicyFinancialPreview
               action={
-                <Button
-                  className="w-full justify-center"
-                  disabled={isTransactionActive || registryMismatch}
-                  type="submit"
-                >
-                  {submitLabel}
-                </Button>
+                checkoutStep === "review" ? (
+                  <Button
+                    className="w-full justify-center"
+                    disabled={
+                      !isConnected || isTransactionActive || registryMismatch
+                    }
+                    type="submit"
+                  >
+                    {confirmButtonLabel}
+                  </Button>
+                ) : undefined
               }
               durationDays={durationDays}
               eventLevel={eventLevel}
+              note={
+                checkoutStep === "review" && !isConnected ? (
+                  <p className="rounded-lg border border-amber/25 bg-amber/10 p-3 text-sm leading-6 text-amber">
+                    Connect your wallet to confirm and pay.
+                  </p>
+                ) : undefined
+              }
               thresholdPreview={thresholdPreview}
+              variant={checkoutStep === "review" ? "payment" : "preview"}
             />
             {registryQuery.isError ? (
               <p className="rounded-md border border-amber/25 bg-amber/10 p-3 text-xs leading-5 text-amber">

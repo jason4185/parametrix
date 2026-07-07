@@ -29,7 +29,7 @@ export function AppSidebar() {
 
   return (
     <aside className="hidden w-72 border-r border-white/10 bg-[#081316]/95 px-5 py-6 lg:block">
-      <ParametrixLogo />
+      <ParametrixLogo size="md" showWordmark />
       <nav className="mt-10 space-y-2">
         {visibleLinks.map((link) => {
           const Icon = link.icon;

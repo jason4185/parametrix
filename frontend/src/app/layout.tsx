@@ -8,8 +8,45 @@ import { AppProviders } from "@/providers/AppProviders";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
+  description: "Parametric weather insurance settled by real weather data.",
+  icons: {
+    apple: [
+      {
+        type: "image/svg+xml",
+        url: "/apple-touch-icon.svg",
+      },
+    ],
+    icon: [
+      {
+        type: "image/svg+xml",
+        url: "/favicon.svg",
+      },
+      {
+        type: "image/svg+xml",
+        url: "/icon.svg",
+      },
+    ],
+  },
+  metadataBase: new URL("https://parametrix.app"),
+  openGraph: {
+    description: "Parametric weather insurance settled by real weather data.",
+    images: [
+      {
+        alt: "Parametrix",
+        height: 630,
+        url: "/og-image.svg",
+        width: 1200,
+      },
+    ],
+    title: "Parametrix",
+  },
   title: "Parametrix",
-  description: "Parametric weather insurance for fixed-period coverage.",
+  twitter: {
+    card: "summary_large_image",
+    description: "Parametric weather insurance settled by real weather data.",
+    images: ["/og-image.svg"],
+    title: "Parametrix",
+  },
 };
 
 export default function RootLayout({

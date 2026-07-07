@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Parametrix">
+  <defs>
+    <radialGradient id="glow" cx="30%" cy="18%" r="70%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.24"/>
+      <stop offset="62%" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="180" height="180" rx="40" fill="#071316"/>
+  <rect width="180" height="180" rx="40" fill="url(#glow)"/>
+  <path d="M90 21 136 39v46c0 32-19 58-46 73-27-15-46-41-46-73V39l46-18Z" fill="#071316" stroke="#7DD3FC" stroke-linecap="round" stroke-linejoin="round" stroke-width="11"/>
+  <path d="M70 120V60h29c16 0 27 11 27 25s-11 24-27 24H70" stroke="#00E5FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="13"/>
+  <path d="M52 96h20l9-20 16 40 11-23h20" stroke="#E0F7FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+  <path d="M111 50c5-7 14-11 23-9" stroke="#00E5FF" stroke-linecap="round" stroke-width="8"/>
+</svg>

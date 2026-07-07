@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Parametrix</title>
+  <desc id="desc">Parametric weather insurance settled by real weather data.</desc>
+  <defs>
+    <radialGradient id="cyanGlow" cx="22%" cy="18%" r="68%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.24"/>
+      <stop offset="56%" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0D1C22"/>
+      <stop offset="55%" stop-color="#071316"/>
+      <stop offset="100%" stop-color="#020708"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#cyanGlow)"/>
+  <path d="M790 92c130 34 231 141 259 274" fill="none" stroke="#00E5FF" stroke-opacity="0.14" stroke-width="2"/>
+  <path d="M825 145c86 29 153 101 177 190" fill="none" stroke="#7DD3FC" stroke-opacity="0.12" stroke-width="2"/>
+  <rect x="72" y="72" width="1056" height="486" rx="38" fill="#08161A" fill-opacity="0.78" stroke="#FFFFFF" stroke-opacity="0.1"/>
+  <g transform="translate(132 153)">
+    <rect width="96" height="96" rx="24" fill="#071316" stroke="#00E5FF" stroke-opacity="0.34"/>
+    <circle cx="35" cy="26" r="64" fill="#00E5FF" opacity="0.13"/>
+    <path d="M48 12 73 22v25c0 17-10 32-25 40-15-8-25-23-25-40V22l25-10Z" fill="#071316" stroke="#7DD3FC" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/>
+    <path d="M37 69V34h17c10 0 16 6 16 15 0 8-6 14-16 14H37" stroke="#00E5FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="7"/>
+    <path d="M27 55h12l6-12 9 25 7-15h12" stroke="#E0F7FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+    <path d="M59 29c3-5 8-7 14-6" stroke="#00E5FF" stroke-linecap="round" stroke-width="4"/>
+  </g>
+  <text x="252" y="216" fill="#F5FBFF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="64" font-weight="750" letter-spacing="0.2">Parametrix</text>
+  <text x="132" y="335" fill="#E0F7FF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="40" font-weight="650">Parametric weather insurance</text>
+  <text x="132" y="389" fill="#C6D5DC" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="450">settled by real weather data.</text>
+  <g transform="translate(132 460)">
+    <rect width="210" height="46" rx="23" fill="#00E5FF" fill-opacity="0.12" stroke="#00E5FF" stroke-opacity="0.28"/>
+    <text x="24" y="30" fill="#A9F3FF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="650">Fixed premiums</text>
+  </g>
+  <g transform="translate(364 460)">
+    <rect width="252" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <text x="24" y="30" fill="#DCE9EE" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="650">Automated settlement</text>
+  </g>
+  <g transform="translate(638 460)">
+    <rect width="316" height="46" rx="23" fill="#FFFFFF" fill-opacity="0.05" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <text x="24" y="30" fill="#DCE9EE" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="650">On-chain payout verification</text>
+  </g>
+</svg>

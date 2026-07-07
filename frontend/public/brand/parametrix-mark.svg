@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Parametrix mark</title>
+  <desc id="desc">A cyan shield, parametric pulse, and policy curve mark on a dark background.</desc>
+  <defs>
+    <radialGradient id="glow" cx="30%" cy="20%" r="70%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.24"/>
+      <stop offset="58%" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="12" x2="52" y1="10" y2="54">
+      <stop offset="0%" stop-color="#E0F7FF"/>
+      <stop offset="48%" stop-color="#00E5FF"/>
+      <stop offset="100%" stop-color="#7DD3FC"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#071316"/>
+  <rect width="64" height="64" rx="16" fill="url(#glow)"/>
+  <path d="M32 7.5 48.5 14v16.4c0 11.3-6.8 20.7-16.5 25.6-9.7-4.9-16.5-14.3-16.5-25.6V14L32 7.5Z" fill="#071316" stroke="#7DD3FC" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+  <path d="M25 43V21.5h10.2c5.8 0 9.6 3.8 9.6 8.7S41 39 35.2 39H25" stroke="#00E5FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.5"/>
+  <path d="M18.5 34.5h7.1l3.4-7.2 5.6 14.2 4-8.2h7" stroke="#E0F7FF" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/>
+  <path d="M39.5 17.8c1.7-2.6 4.8-3.9 8.3-3.1" stroke="#00E5FF" stroke-linecap="round" stroke-width="3"/>
+</svg>

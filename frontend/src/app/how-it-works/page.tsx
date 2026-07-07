@@ -36,7 +36,7 @@ export default function HowItWorksPage() {
     <main className="min-h-screen bg-base text-text">
       <div className="mx-auto max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <ParametrixLogo />
+          <ParametrixLogo size="md" showWordmark />
           <div className="flex flex-wrap items-center gap-3">
             <Link
               className="inline-flex h-11 items-center gap-2 rounded-md border border-white/15 bg-white/[0.04] px-4 text-sm font-semibold text-muted transition hover:border-cyan/40 hover:text-text"

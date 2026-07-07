@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRef } from "react";
 import { ParametrixLogo } from "@/components/brand/ParametrixLogo";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +24,7 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative isolate min-h-[88svh] overflow-hidden bg-base">
+    <section className="relative isolate min-h-screen overflow-hidden bg-base">
       <video
         ref={videoRef}
         autoPlay
@@ -37,6 +36,7 @@ export function HeroSection() {
         onEnded={restartVideo}
         onLoadedData={playVideo}
         playsInline
+        poster="/images/parametrix-hero-poster-clean.jpg"
         preload="auto"
       >
         <source
@@ -52,15 +52,9 @@ export function HeroSection() {
       <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-base to-transparent" />
 
-      <div className="relative z-10 mx-auto flex min-h-[88svh] w-full max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
-        <header className="flex items-center justify-between">
-          <ParametrixLogo />
-          <Link
-            className="rounded-lg border border-white/20 bg-black/35 px-6 py-3 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:border-cyan/50 hover:bg-black/50"
-            href="/app"
-          >
-            Launch App
-          </Link>
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
+        <header className="flex items-center">
+          <ParametrixLogo size="lg" showWordmark />
         </header>
 
         <div className="flex flex-1 items-center py-16">
@@ -84,9 +78,9 @@ export function HeroSection() {
             </div>
             <div className="mt-12 grid max-w-3xl gap-4 sm:grid-cols-3">
               {[
-                ["1 GEN", "Starting premium"],
-                ["3-10 GEN", "Coverage payout"],
-                ["Daily", "Settlement updates"],
+                ["Fixed premiums", "Know the cost before purchase"],
+                ["Automated settlement", "Weather checks run daily"],
+                ["On-chain payout verification", "Eligible payouts are recorded"],
               ].map(([value, label]) => (
                 <div
                   className="border-l border-white/15 pl-4"

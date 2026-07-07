@@ -19,7 +19,7 @@ export function TopNav({
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="lg:hidden">
-            <ParametrixLogo />
+            <ParametrixLogo size="sm" showWordmark />
           </div>
           {sectionLabel ? (
             <span className="hidden truncate text-sm font-medium text-muted sm:block">

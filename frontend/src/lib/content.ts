@@ -1,7 +1,7 @@
 export const homepageContent = {
-  headline: "Parametric weather insurance for measurable risk.",
+  headline: "Parametric weather insurance, settled by real weather data.",
   subtext:
-    "Buy fixed-period rainfall or temperature coverage with clear premiums, transparent triggers, and payout availability based on verified weather data.",
+    "Buy fixed-period rainfall or temperature coverage. Parametrix uses GenLayer to verify policy terms, check official weather data, and trigger payouts when your selected threshold is met.",
   howItWorksTitle: "How Parametrix protects policyholders",
   howItWorksSubtitle:
     "Fixed premiums, clear coverage payouts, and settlement updates designed for measurable weather risk.",

@@ -7,21 +7,26 @@ type PolicyFinancialPreviewProps = {
   action?: React.ReactNode;
   durationDays: number;
   eventLevel: string;
+  note?: React.ReactNode;
   thresholdPreview?: {
     threshold: number;
     unit: string;
   };
+  variant?: "payment" | "preview";
 };
 
 export function PolicyFinancialPreview({
   action,
   durationDays,
   eventLevel,
+  note,
   thresholdPreview,
+  variant = "preview",
 }: PolicyFinancialPreviewProps) {
   const selectedOption =
     PREMIUM_AND_COVERAGE.find((option) => option.level === eventLevel) ??
     PREMIUM_AND_COVERAGE[0];
+  const isPaymentSummary = variant === "payment";
 
   return (
     <SectionCard className="p-6">
@@ -31,13 +36,15 @@ export function PolicyFinancialPreview({
         </span>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan/80">
-            5. Review
+            {isPaymentSummary ? "Final Checkout" : "Coverage Preview"}
           </p>
           <h3 className="text-lg font-semibold text-text">
-            Purchase Summary
+            {isPaymentSummary ? "Payment Summary" : "Coverage Preview"}
           </h3>
           <p className="text-sm text-muted">
-            Review your premium and payout before purchase.
+            {isPaymentSummary
+              ? "Confirm your premium and payout before paying."
+              : "Review your selected terms before confirming purchase."}
           </p>
         </div>
       </div>
@@ -58,6 +65,7 @@ export function PolicyFinancialPreview({
         <DataRow label="Coverage Period" value={`${durationDays} days`} />
       </dl>
       {action ? <div className="mt-6">{action}</div> : null}
+      {note ? <div className="mt-3">{note}</div> : null}
     </SectionCard>
   );
 }

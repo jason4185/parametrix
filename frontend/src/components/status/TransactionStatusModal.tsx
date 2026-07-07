@@ -103,6 +103,31 @@ const completedCopy: Record<TransactionActionType, { body: string; title: string
     },
   };
 
+const buyCoverageStageCopy: Partial<
+  Record<TransactionStage, { body: string; title: string }>
+> = {
+  accepted: {
+    body: "Parametrix is preparing your new coverage.",
+    title: "Creating policy",
+  },
+  failed: {
+    body: "Purchase failed. Your policy was not created. Please try again.",
+    title: "Purchase failed",
+  },
+  submitted: {
+    body: "Your transaction was accepted and the policy is still being verified.",
+    title: "Creating policy",
+  },
+  submitting: {
+    body: "Submitting your coverage purchase.",
+    title: "Creating policy",
+  },
+  verifying: {
+    body: "Checking that your new policy is active.",
+    title: "Verifying policy",
+  },
+};
+
 const activeStages: TransactionStage[] = [
   "accepted",
   "review",
@@ -163,7 +188,12 @@ export function TransactionStatusModal({
     return null;
   }
 
-  const copy = stage === "completed" ? completedCopy[actionType] : stageCopy[stage];
+  const actionStageCopy =
+    actionType === "buyCoverage" ? buyCoverageStageCopy[stage] : undefined;
+  const copy =
+    stage === "completed"
+      ? completedCopy[actionType]
+      : actionStageCopy ?? stageCopy[stage];
   const canClose = !activeStages.includes(stage);
 
   return (
