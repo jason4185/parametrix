@@ -1,4 +1,4 @@
-import { getUtcDateDaysAgo, isValidDateString } from "./date";
+import { compareDateStrings, getUtcDateDaysAgo, isValidDateString } from "./date";
 import { createParametrixCronClient } from "./genlayerClient";
 import { logger } from "./logger";
 import type {
@@ -176,6 +176,13 @@ function readinessReason(readiness: SettlementReadiness | null) {
     : String(reason);
 }
 
+function readinessExpectedDate(readiness: SettlementReadiness | null) {
+  const expected = readiness?.expected_settlement_date;
+  return expected === undefined || expected === null || expected === ""
+    ? undefined
+    : String(expected);
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -277,120 +284,260 @@ async function verifySettlement({
   };
 }
 
-async function processPolicy({
+async function readPolicyRecord(
+  client: ReturnType<typeof createParametrixCronClient>,
+  policyId: string
+) {
+  return asRecord(
+    await withRateLimitRetry("get_policy", () =>
+      client.readContract(CONTRACT_READ_METHODS.GET_POLICY, [policyId])
+    )
+  );
+}
+
+async function readReadiness({
   client,
-  dryRun,
   policyId,
   settlementDate
 }: {
   client: ReturnType<typeof createParametrixCronClient>;
-  dryRun: boolean;
   policyId: string;
   settlementDate: string;
-}): Promise<PolicySettlementResult> {
-  try {
-    const readiness = asRecord(
-      await withRateLimitRetry("get_settlement_readiness", () =>
-        client.readContract(CONTRACT_READ_METHODS.GET_SETTLEMENT_READINESS, [
-          policyId,
-          settlementDate
-        ])
-      )
-    ) as SettlementReadiness | null;
-    const reason = readinessReason(readiness);
-
-    if (!readinessIsReady(readiness)) {
-      logger.info("policy_skipped", {
-        policy_id: policyId,
-        readiness_reason: reason,
-        settlement_date: settlementDate
-      });
-
-      return {
-        action: "skipped",
-        policy_id: policyId,
-        readiness_reason: reason,
-        settlement_date: settlementDate
-      };
-    }
-
-    if (dryRun) {
-      logger.info("policy_skipped", {
-        dry_run: true,
-        policy_id: policyId,
-        readiness_reason: reason,
-        settlement_date: settlementDate
-      });
-
-      return {
-        action: "dry_run",
-        policy_id: policyId,
-        readiness_reason: reason,
-        settlement_date: settlementDate
-      };
-    }
-
-    await withRateLimitRetry("settle_policy_day", () =>
-      client.writeContract(CONTRACT_WRITE_METHODS.SETTLE_POLICY_DAY, [
+}) {
+  return asRecord(
+    await withRateLimitRetry("get_settlement_readiness", () =>
+      client.readContract(CONTRACT_READ_METHODS.GET_SETTLEMENT_READINESS, [
         policyId,
         settlementDate
       ])
-    );
-    logger.info("policy_settlement_submitted", {
-      policy_id: policyId,
-      settlement_date: settlementDate
-    });
+    )
+  ) as SettlementReadiness | null;
+}
 
-    const verification = await verifySettlement({
-      client,
-      policyId,
-      settlementDate
-    });
-    const statusAfter = statusFromPolicy(verification.policy);
+async function processPolicy({
+  client,
+  dryRun,
+  latestSettlementDate,
+  maxSettlementDaysPerPolicy,
+  policyId
+}: {
+  client: ReturnType<typeof createParametrixCronClient>;
+  dryRun: boolean;
+  latestSettlementDate: string;
+  maxSettlementDaysPerPolicy: number;
+  policyId: string;
+}): Promise<PolicySettlementResult[]> {
+  const results: PolicySettlementResult[] = [];
 
-    if (!verification.verified) {
-      logger.warn("policy_failed", {
-        error: "Settlement write was accepted but verification was delayed.",
+  try {
+    let policy = await readPolicyRecord(client, policyId);
+    let catchUpIndex = 0;
+
+    while (catchUpIndex < maxSettlementDaysPerPolicy) {
+      const status = statusFromPolicy(policy);
+
+      if (status && status !== "ACTIVE") {
+        if (results.length === 0) {
+          results.push({
+            action: "skipped",
+            policy_id: policyId,
+            readiness_reason: "policy_not_active",
+            settlement_date: latestSettlementDate,
+            status_after: status
+          });
+        }
+
+        break;
+      }
+
+      const readinessForTarget = await readReadiness({
+        client,
+        policyId,
+        settlementDate: latestSettlementDate
+      });
+      const expectedSettlementDate = readinessExpectedDate(readinessForTarget);
+      const targetReason = readinessReason(readinessForTarget);
+
+      if (!expectedSettlementDate) {
+        logger.info("policy_skipped", {
+          policy_id: policyId,
+          readiness_reason: targetReason,
+          settlement_date: latestSettlementDate
+        });
+
+        results.push({
+          action: "skipped",
+          policy_id: policyId,
+          readiness_reason: targetReason,
+          settlement_date: latestSettlementDate
+        });
+        break;
+      }
+
+      if (compareDateStrings(expectedSettlementDate, latestSettlementDate) > 0) {
+        logger.info("policy_skipped", {
+          expected_settlement_date: expectedSettlementDate,
+          policy_id: policyId,
+          readiness_reason: "expected_settlement_date_in_future",
+          settlement_date: latestSettlementDate
+        });
+
+        results.push({
+          action: "skipped",
+          expected_settlement_date: expectedSettlementDate,
+          policy_id: policyId,
+          readiness_reason: "expected_settlement_date_in_future",
+          settlement_date: expectedSettlementDate,
+          status_after: status
+        });
+        break;
+      }
+
+      const readiness =
+        readinessForTarget?.requested_settlement_date === expectedSettlementDate
+          ? readinessForTarget
+          : await readReadiness({
+              client,
+              policyId,
+              settlementDate: expectedSettlementDate
+            });
+      const reason = readinessReason(readiness);
+
+      if (!readinessIsReady(readiness)) {
+        logger.info("policy_skipped", {
+          expected_settlement_date: expectedSettlementDate,
+          policy_id: policyId,
+          readiness_reason: reason,
+          settlement_date: expectedSettlementDate
+        });
+
+        results.push({
+          action: "skipped",
+          expected_settlement_date: expectedSettlementDate,
+          policy_id: policyId,
+          readiness_reason: reason,
+          settlement_date: expectedSettlementDate,
+          status_after: status
+        });
+        break;
+      }
+
+      catchUpIndex += 1;
+
+      if (dryRun) {
+        logger.info("policy_skipped", {
+          dry_run: true,
+          expected_settlement_date: expectedSettlementDate,
+          policy_id: policyId,
+          readiness_reason: reason,
+          settlement_date: expectedSettlementDate
+        });
+
+        results.push({
+          action: "dry_run",
+          catch_up_index: catchUpIndex,
+          expected_settlement_date: expectedSettlementDate,
+          max_catch_up_days: maxSettlementDaysPerPolicy,
+          policy_id: policyId,
+          readiness_reason: reason,
+          settlement_date: expectedSettlementDate,
+          status_after: status
+        });
+        break;
+      }
+
+      await withRateLimitRetry("settle_policy_day", () =>
+        client.writeContract(CONTRACT_WRITE_METHODS.SETTLE_POLICY_DAY, [
+          policyId,
+          expectedSettlementDate
+        ])
+      );
+      logger.info("policy_settlement_submitted", {
+        catch_up_index: catchUpIndex,
+        expected_settlement_date: expectedSettlementDate,
         policy_id: policyId,
-        settlement_date: settlementDate
+        settlement_date: expectedSettlementDate
       });
 
-      return {
-        action: "failed",
-        error: "Settlement was submitted, but latest policy state could not be verified yet.",
+      const verification = await verifySettlement({
+        client,
+        policyId,
+        settlementDate: expectedSettlementDate
+      });
+      const statusAfter = statusFromPolicy(verification.policy);
+
+      if (!verification.verified) {
+        logger.warn("policy_failed", {
+          error: "Settlement write was accepted but verification was delayed.",
+          policy_id: policyId,
+          settlement_date: expectedSettlementDate
+        });
+
+        results.push({
+          action: "failed",
+          catch_up_index: catchUpIndex,
+          error:
+            "Settlement was submitted, but latest policy state could not be verified yet.",
+          expected_settlement_date: expectedSettlementDate,
+          max_catch_up_days: maxSettlementDaysPerPolicy,
+          policy_id: policyId,
+          readiness_reason: reason,
+          settlement_date: expectedSettlementDate,
+          status_after: statusAfter
+        });
+        break;
+      }
+
+      logger.info("policy_settlement_verified", {
+        catch_up_index: catchUpIndex,
+        policy_id: policyId,
+        settlement_date: expectedSettlementDate,
+        status_after: statusAfter
+      });
+
+      results.push({
+        action: "settled",
+        catch_up_index: catchUpIndex,
+        expected_settlement_date: expectedSettlementDate,
+        max_catch_up_days: maxSettlementDaysPerPolicy,
         policy_id: policyId,
         readiness_reason: reason,
-        settlement_date: settlementDate,
+        settlement_date: expectedSettlementDate,
         status_after: statusAfter
-      };
+      });
+
+      policy = verification.policy;
+
+      if (statusAfter && statusAfter !== "ACTIVE") {
+        break;
+      }
     }
 
-    logger.info("policy_settlement_verified", {
-      policy_id: policyId,
-      settlement_date: settlementDate,
-      status_after: statusAfter
-    });
+    if (results.length === 0) {
+      results.push({
+        action: "skipped",
+        policy_id: policyId,
+        readiness_reason: "max_catch_up_days_reached",
+        settlement_date: latestSettlementDate
+      });
+    }
 
-    return {
-      action: "settled",
-      policy_id: policyId,
-      readiness_reason: reason,
-      settlement_date: settlementDate,
-      status_after: statusAfter
-    };
+    return results;
   } catch (error) {
     logger.error("policy_failed", {
       error: errorMessage(error),
       policy_id: policyId,
-      settlement_date: settlementDate
+      settlement_date: latestSettlementDate
     });
 
-    return {
-      action: "failed",
-      error: errorMessage(error),
-      policy_id: policyId,
-      settlement_date: settlementDate
-    };
+    return [
+      {
+        action: "failed",
+        error: errorMessage(error),
+        policy_id: policyId,
+        settlement_date: latestSettlementDate
+      }
+    ];
   }
 }
 
@@ -401,15 +548,26 @@ export async function runSettlementCron(
   validateEnv(env);
 
   const settlementDate = getSettlementDate(env, options);
+  const yesterdayUtc = getUtcDateDaysAgo(1);
+  const latestSettlementDate =
+    compareDateStrings(settlementDate, yesterdayUtc) > 0
+      ? yesterdayUtc
+      : settlementDate;
   const maxPolicies = parsePositiveInteger(env.MAX_POLICIES_PER_RUN, 25);
+  const maxSettlementDaysPerPolicy = parsePositiveInteger(
+    env.MAX_SETTLEMENT_DAYS_PER_POLICY,
+    3
+  );
   const dryRun = options.dryRun ?? parseBoolean(env.DRY_RUN, false);
   const client = createParametrixCronClient(env);
 
   logger.info("cron_start", {
     dry_run: dryRun,
+    latest_settlement_date: latestSettlementDate,
+    max_catch_up_days_per_policy: maxSettlementDaysPerPolicy,
     max_policies: maxPolicies,
     operator: client.operatorAddress,
-    settlement_date: settlementDate,
+    requested_settlement_date: settlementDate,
     source: options.source ?? "cron"
   });
 
@@ -428,7 +586,7 @@ export async function runSettlementCron(
       ok: true,
       processed: 0,
       results: [],
-      settlement_date: settlementDate,
+      settlement_date: latestSettlementDate,
       settled: 0,
       skipped: 0
     };
@@ -444,24 +602,26 @@ export async function runSettlementCron(
       await wait(500);
     }
 
-    results.push(
-      await processPolicy({
-        client,
-        dryRun,
-        policyId,
-        settlementDate
-      })
-    );
+    const policyResults = await processPolicy({
+      client,
+      dryRun,
+      latestSettlementDate,
+      maxSettlementDaysPerPolicy,
+      policyId
+    });
+    results.push(...policyResults);
   }
+
+  const failed = results.filter((result) => result.action === "failed").length;
 
   const summary: SettlementCronSummary = {
     active_count: activePolicyIds.length,
     dry_run: dryRun,
-    failed: results.filter((result) => result.action === "failed").length,
-    ok: true,
+    failed,
+    ok: failed === 0,
     processed: results.length,
     results,
-    settlement_date: settlementDate,
+    settlement_date: latestSettlementDate,
     settled: results.filter((result) => result.action === "settled").length,
     skipped: results.filter(
       (result) => result.action === "skipped" || result.action === "dry_run"

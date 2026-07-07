@@ -105,6 +105,95 @@ def _date_from_datetime(datetime_value: str) -> str:
     return datetime_value[0:10]
 
 
+def _is_address_whitespace(character: str) -> bool:
+    return (
+        character == " "
+        or character == "\t"
+        or character == "\n"
+        or character == "\r"
+    )
+
+
+def _trim_address(address: str) -> str:
+    start = 0
+    end = len(address)
+
+    while start < end and _is_address_whitespace(address[start : start + 1]):
+        start += 1
+
+    while end > start and _is_address_whitespace(address[end - 1 : end]):
+        end -= 1
+
+    return address[start:end]
+
+
+def _lower_address_character(character: str) -> str:
+    if character == "A":
+        return "a"
+    if character == "B":
+        return "b"
+    if character == "C":
+        return "c"
+    if character == "D":
+        return "d"
+    if character == "E":
+        return "e"
+    if character == "F":
+        return "f"
+    if character == "X":
+        return "x"
+    return character
+
+
+def _normalize_address(address: str) -> str:
+    if address is None:
+        return ""
+
+    trimmed_address = _trim_address(str(address))
+    normalized_address = ""
+
+    for character in trimmed_address:
+        normalized_address += _lower_address_character(character)
+
+    return normalized_address
+
+
+def _is_digit_string(value: str) -> bool:
+    if value == "":
+        return False
+
+    for character in value:
+        if character < "0" or character > "9":
+            return False
+
+    return True
+
+
+def _is_hex_character(character: str) -> bool:
+    if character >= "0" and character <= "9":
+        return True
+    if character >= "a" and character <= "f":
+        return True
+    if character >= "A" and character <= "F":
+        return True
+    return False
+
+
+def _is_valid_address(address: str) -> bool:
+    normalized_address = _normalize_address(address)
+
+    if len(normalized_address) != 42:
+        return False
+    if normalized_address[0:2] != "0x":
+        return False
+
+    for character in normalized_address[2:42]:
+        if not _is_hex_character(character):
+            return False
+
+    return True
+
+
 def _is_leap_year(year: int) -> bool:
     if year % 400 == 0:
         return True
@@ -127,6 +216,72 @@ def _two_digits(value: int) -> str:
     if value < 10:
         return "0" + str(value)
     return str(value)
+
+
+def _is_valid_date_string(date_value: str) -> bool:
+    if len(date_value) != 10:
+        return False
+    if date_value[4:5] != "-":
+        return False
+    if date_value[7:8] != "-":
+        return False
+
+    year_value = date_value[0:4]
+    month_value = date_value[5:7]
+    day_value = date_value[8:10]
+
+    if not _is_digit_string(year_value):
+        return False
+    if not _is_digit_string(month_value):
+        return False
+    if not _is_digit_string(day_value):
+        return False
+
+    year = int(year_value)
+    month = int(month_value)
+    day = int(day_value)
+
+    if year < 1:
+        return False
+    if month < 1 or month > 12:
+        return False
+    if day < 1:
+        return False
+    if day > _days_in_month(year, month):
+        return False
+
+    return True
+
+
+def _date_to_day_index(date_value: str) -> int:
+    year = int(date_value[0:4])
+    month = int(date_value[5:7])
+    day = int(date_value[8:10])
+    years_before = year - 1
+    day_index = (
+        years_before * 365
+        + years_before // 4
+        - years_before // 100
+        + years_before // 400
+    )
+    current_month = 1
+
+    while current_month < month:
+        day_index += _days_in_month(year, current_month)
+        current_month += 1
+
+    return day_index + day
+
+
+def _compare_dates(left: str, right: str) -> int:
+    left_index = _date_to_day_index(left)
+    right_index = _date_to_day_index(right)
+
+    if left_index < right_index:
+        return -1
+    if left_index > right_index:
+        return 1
+    return 0
 
 
 def _add_days(date_value: str, days_to_add: int) -> str:
@@ -244,6 +399,14 @@ def _find_settlement_history_record(policy: dict, settlement_date: str) -> dict:
     return {}
 
 
+def _expected_settlement_date(policy: dict) -> str:
+    last_settled_date = policy.get("last_settled_date", "")
+    if last_settled_date == "":
+        return policy.get("coverage_start", "")
+
+    return _add_days(last_settled_date, 1)
+
+
 def _response_to_text(response) -> str:
     if isinstance(response, str):
         return response
@@ -290,6 +453,7 @@ class Parametrix(gl.Contract):
     capital_pool: u256
     reserved_liability: u256
     owner: str
+    settlement_operator: str
 
     def __init__(self):
         self.policies = TreeMap()
@@ -298,7 +462,8 @@ class Parametrix(gl.Contract):
         self.policy_count = u256(0)
         self.capital_pool = u256(0)
         self.reserved_liability = u256(0)
-        self.owner = str(gl.message.sender_address)
+        self.owner = _normalize_address(str(gl.message.sender_address))
+        self.settlement_operator = self.owner
 
     @gl.public.view
     def get_policy(self, policy_id: str) -> str:
@@ -309,7 +474,7 @@ class Parametrix(gl.Contract):
 
     @gl.public.view
     def get_my_policies(self) -> str:
-        owner = str(gl.message.sender_address)
+        owner = _normalize_address(str(gl.message.sender_address))
         owner_policy_ids = self.user_policies.get(owner)
         if owner_policy_ids is None:
             return "[]"
@@ -317,7 +482,8 @@ class Parametrix(gl.Contract):
 
     @gl.public.view
     def get_policies_by_owner(self, owner: str) -> str:
-        owner_policy_ids = self.user_policies.get(owner)
+        normalized_owner = _normalize_address(owner)
+        owner_policy_ids = self.user_policies.get(normalized_owner)
         if owner_policy_ids is None:
             return "[]"
         return owner_policy_ids
@@ -340,6 +506,24 @@ class Parametrix(gl.Contract):
     @gl.public.view
     def get_owner(self) -> str:
         return self.owner
+
+    @gl.public.view
+    def get_settlement_operator(self) -> str:
+        return self.settlement_operator
+
+    @gl.public.write
+    def set_settlement_operator(self, operator_address: str) -> str:
+        caller = _normalize_address(str(gl.message.sender_address))
+        if caller != self.owner:
+            raise gl.vm.UserError("only owner can set settlement operator")
+        normalized_operator_address = _normalize_address(operator_address)
+        if normalized_operator_address == "":
+            raise gl.vm.UserError("invalid_settlement_operator")
+        if not _is_valid_address(normalized_operator_address):
+            raise gl.vm.UserError("invalid_settlement_operator")
+
+        self.settlement_operator = normalized_operator_address
+        return self.settlement_operator
 
     @gl.public.view
     def get_last_policy_id(self) -> str:
@@ -446,15 +630,18 @@ class Parametrix(gl.Contract):
         if policy_json is None:
             return _dumps_json(
                 {
-                    "policy_id": policy_id,
-                    "exists": False,
-                    "status": "",
-                    "settlement_date": settlement_date,
-                    "last_settled_date": "",
-                    "coverage_start": "",
+                    "can_settle": False,
                     "coverage_end": "",
+                    "coverage_start": "",
+                    "expected_settlement_date": "",
+                    "exists": False,
                     "is_ready": False,
+                    "last_settled_date": "",
+                    "policy_id": policy_id,
                     "reason": "policy_not_found",
+                    "requested_settlement_date": settlement_date,
+                    "settlement_date": settlement_date,
+                    "status": "",
                 }
             )
 
@@ -463,35 +650,42 @@ class Parametrix(gl.Contract):
         last_settled_date = policy.get("last_settled_date", "")
         coverage_start = policy.get("coverage_start", "")
         coverage_end = policy.get("coverage_end", "")
+        expected_settlement_date = _expected_settlement_date(policy)
         is_ready = False
         reason = ""
 
-        if settlement_date == "":
-            reason = "settlement_date_required"
+        if status != ACTIVE:
+            reason = "policy_not_active"
+        elif not _is_valid_date_string(settlement_date):
+            reason = "invalid_date_format"
         elif settlement_date == last_settled_date:
             reason = "already_settled_for_date"
-        elif status != ACTIVE:
-            reason = "policy_not_active"
-        elif settlement_date < coverage_start:
+        elif _find_settlement_history_record(policy, settlement_date) != {}:
+            reason = "already_settled_for_date"
+        elif _compare_dates(settlement_date, coverage_start) < 0:
             reason = "settlement_before_coverage_start"
-        elif settlement_date > coverage_end:
-            is_ready = True
-            reason = "ready_to_expire"
+        elif _compare_dates(settlement_date, coverage_end) > 0:
+            reason = "settlement_after_coverage_end"
+        elif settlement_date != expected_settlement_date:
+            reason = "settlement_date_not_expected"
         else:
             is_ready = True
             reason = "ready"
 
         return _dumps_json(
             {
-                "policy_id": policy.get("policy_id", ""),
-                "exists": True,
-                "status": status,
-                "settlement_date": settlement_date,
-                "last_settled_date": last_settled_date,
-                "coverage_start": coverage_start,
+                "can_settle": is_ready,
                 "coverage_end": coverage_end,
+                "coverage_start": coverage_start,
+                "expected_settlement_date": expected_settlement_date,
+                "exists": True,
                 "is_ready": is_ready,
+                "last_settled_date": last_settled_date,
+                "policy_id": policy.get("policy_id", ""),
                 "reason": reason,
+                "requested_settlement_date": settlement_date,
+                "settlement_date": settlement_date,
+                "status": status,
             }
         )
 
@@ -506,7 +700,7 @@ class Parametrix(gl.Contract):
 
     @gl.public.write
     def withdraw_from_pool(self, amount_gen: u256) -> str:
-        caller = str(gl.message.sender_address)
+        caller = _normalize_address(str(gl.message.sender_address))
         if caller != self.owner:
             raise gl.vm.UserError("only owner can withdraw")
         if amount_gen == u256(0):
@@ -529,7 +723,7 @@ class Parametrix(gl.Contract):
         event_level: str,
         duration_days: u256,
     ) -> str:
-        caller = str(gl.message.sender_address)
+        caller = _normalize_address(str(gl.message.sender_address))
         premium_paid = gl.message.value
         required_premium = _get_required_premium_for_event_level(event_level)
         payout_amount = _get_payout_for_event_level(event_level)
@@ -697,9 +891,10 @@ class Parametrix(gl.Contract):
             raise gl.vm.UserError("policy not found")
 
         policy = _loads_json_object(policy_json)
-        caller = str(gl.message.sender_address)
+        caller = _normalize_address(str(gl.message.sender_address))
+        policyholder = _normalize_address(policy["policyholder"])
 
-        if caller != policy["policyholder"]:
+        if caller != policyholder:
             raise gl.vm.UserError("only policyholder can cancel policy")
         if policy["status"] != ACTIVE:
             raise gl.vm.UserError("only active policies can be cancelled")
@@ -721,11 +916,15 @@ class Parametrix(gl.Contract):
 
     @gl.public.write
     def settle_policy_day(self, policy_id: str, settlement_date: str) -> str:
+        caller = _normalize_address(str(gl.message.sender_address))
+        if caller != self.owner and caller != self.settlement_operator:
+            raise gl.vm.UserError("unauthorized_settlement_operator")
+
         policy_json = self.policies.get(policy_id)
         if policy_json is None:
             raise gl.vm.UserError("policy not found")
-        if settlement_date == "":
-            raise gl.vm.UserError("settlement date is required")
+        if not _is_valid_date_string(settlement_date):
+            raise gl.vm.UserError("invalid_date_format")
 
         policy = _loads_json_object(policy_json)
         previous_status = policy["status"]
@@ -739,6 +938,7 @@ class Parametrix(gl.Contract):
         stored_longitude = policy["longitude"]
         stored_coverage_start = policy["coverage_start"]
         stored_coverage_end = policy["coverage_end"]
+        expected_settlement_date = _expected_settlement_date(policy)
         threshold_scaled = _scale_weather_value(stored_threshold)
 
         def build_settlement_response(
@@ -789,77 +989,24 @@ class Parametrix(gl.Contract):
             }
 
         if policy["last_settled_date"] == settlement_date:
-            history_record = _find_settlement_history_record(policy, settlement_date)
-            if history_record != {}:
-                return _dumps_json(
-                    {
-                        "policy_id": stored_policy_id,
-                        "settlement_date": settlement_date,
-                        "coverage_start": stored_coverage_start,
-                        "coverage_end": stored_coverage_end,
-                        "previous_status": previous_status,
-                        "final_status": history_record.get("final_status", previous_status),
-                        "policy_type": stored_policy_type,
-                        "weather_variable": stored_weather_variable,
-                        "weather_value": history_record.get("weather_value", ""),
-                        "weather_value_scaled": history_record.get(
-                            "weather_value_scaled",
-                            "",
-                        ),
-                        "threshold_scaled": history_record.get(
-                            "threshold_scaled",
-                            str(threshold_scaled),
-                        ),
-                        "unit": history_record.get("unit", stored_unit),
-                        "triggered": history_record.get("triggered", False),
-                        "expired_reason": "already_settled_for_date",
-                    }
-                )
-
-            return build_settlement_response(
-                previous_status,
-                "",
-                "",
-                previous_status == TRIGGERED or previous_status == PAID,
-                "already_settled_for_date",
-            )
+            raise gl.vm.UserError("already_settled_for_date")
 
         if previous_status != ACTIVE:
-            raise gl.vm.UserError("policy is not active")
+            raise gl.vm.UserError("policy_not_active")
 
         coverage_limit = u256(int(policy["coverage_limit"]))
 
-        # settlement_date is operator/cron-controlled and represents the
-        # weather day being checked; expiration never uses today's chain time.
-        if settlement_date < stored_coverage_start:
-            raise gl.vm.UserError("settlement date is before coverage start")
+        if _find_settlement_history_record(policy, settlement_date) != {}:
+            raise gl.vm.UserError("already_settled_for_date")
 
-        if settlement_date > stored_coverage_end:
-            policy["status"] = EXPIRED
-            policy["last_settled_date"] = settlement_date
-            active_policy_ids = _loads_json_list(self.active_policy_ids)
-            self.active_policy_ids = _dumps_json(_remove_policy_id(active_policy_ids, policy_id))
-            if self.reserved_liability < coverage_limit:
-                raise gl.vm.UserError("reserved liability underflow")
-            self.reserved_liability -= coverage_limit
-            _append_settlement_history_record(
-                policy,
-                build_settlement_history_record(
-                    EXPIRED,
-                    "",
-                    "",
-                    False,
-                    "settlement_date_after_coverage_end",
-                ),
-            )
-            self.policies[policy_id] = _dumps_json(policy)
-            return build_settlement_response(
-                EXPIRED,
-                "",
-                "",
-                False,
-                "settlement_date_after_coverage_end",
-            )
+        if _compare_dates(settlement_date, stored_coverage_start) < 0:
+            raise gl.vm.UserError("settlement_before_coverage_start")
+
+        if _compare_dates(settlement_date, stored_coverage_end) > 0:
+            raise gl.vm.UserError("settlement_after_coverage_end")
+
+        if settlement_date != expected_settlement_date:
+            raise gl.vm.UserError("settlement_date_not_expected")
 
         requested_settlement_date = settlement_date
 
@@ -989,7 +1136,7 @@ class Parametrix(gl.Contract):
                 "",
             )
 
-        if settlement_date >= stored_coverage_end:
+        if settlement_date == stored_coverage_end:
             policy["status"] = EXPIRED
             active_policy_ids = _loads_json_list(self.active_policy_ids)
             self.active_policy_ids = _dumps_json(_remove_policy_id(active_policy_ids, policy_id))
@@ -1003,7 +1150,7 @@ class Parametrix(gl.Contract):
                     weather_value,
                     str(weather_value_scaled),
                     False,
-                    "settlement_date_on_or_after_coverage_end_no_trigger",
+                    "final_covered_day_no_trigger",
                 ),
             )
             self.policies[policy_id] = _dumps_json(policy)
@@ -1012,7 +1159,7 @@ class Parametrix(gl.Contract):
                 weather_value,
                 str(weather_value_scaled),
                 False,
-                "settlement_date_on_or_after_coverage_end_no_trigger",
+                "final_covered_day_no_trigger",
             )
 
         _append_settlement_history_record(
@@ -1041,9 +1188,10 @@ class Parametrix(gl.Contract):
             raise gl.vm.UserError("policy not found")
 
         policy = _loads_json_object(policy_json)
-        caller = str(gl.message.sender_address)
+        caller = _normalize_address(str(gl.message.sender_address))
+        policyholder = _normalize_address(policy["policyholder"])
 
-        if caller != policy["policyholder"]:
+        if caller != policyholder:
             raise gl.vm.UserError("only policyholder can claim payout")
         if policy["status"] != TRIGGERED:
             raise gl.vm.UserError("policy is not triggered")
@@ -1059,7 +1207,7 @@ class Parametrix(gl.Contract):
         if self.reserved_liability < coverage_limit:
             raise gl.vm.UserError("reserved liability underflow")
 
-        _Recipient(Address(policy["policyholder"])).emit_transfer(value=payout_amount)
+        _Recipient(Address(policyholder)).emit_transfer(value=payout_amount)
 
         policy["status"] = PAID
         policy["paid_at"] = paid_at

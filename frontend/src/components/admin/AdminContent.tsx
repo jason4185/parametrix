@@ -41,6 +41,7 @@ import {
   clearParametrixReadCache,
   readPolicy,
   readPoolStatus,
+  readSettlementReadiness,
 } from "@/lib/genlayer/parametrix";
 import {
   booleanField,
@@ -353,6 +354,7 @@ function AdminOperationsContent({
     settlementDate: string;
   } | null>(null);
   const [poolFundAmount, setPoolFundAmount] = useState("");
+  const [settlementFormError, setSettlementFormError] = useState("");
   const [transactionAction, setTransactionAction] =
     useState<TransactionActionType>("settlePolicyDay");
   const [transactionError, setTransactionError] = useState("");
@@ -397,6 +399,12 @@ function AdminOperationsContent({
     selectedPolicyInActiveList &&
     !selectedPolicyLoading &&
     (!selectedPolicyStatus || selectedPolicyStatus === "ACTIVE");
+  const readinessMatchesSelection =
+    readinessTarget?.policyId === readinessPolicyId &&
+    readinessTarget?.settlementDate === readinessDate;
+  const selectedDateReady =
+    readinessMatchesSelection &&
+    (readiness.data?.can_settle === true || readiness.data?.is_ready === true);
 
   const isOwner =
     Boolean(address && ownerAddress) &&
@@ -413,6 +421,7 @@ function AdminOperationsContent({
 
   function handleReadinessCheck(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSettlementFormError("");
     setReadinessTarget({
       policyId: readinessPolicyId,
       settlementDate: readinessDate,
@@ -559,6 +568,30 @@ function AdminOperationsContent({
 
   async function handleSettle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSettlementFormError("");
+
+    const latestReadiness = await readSettlementReadiness(
+      readinessPolicyId,
+      readinessDate,
+      {
+        cacheTtlMs: ADMIN_READ_STALE_TIME,
+        forceFresh: true,
+      },
+    ).catch(() => null);
+    const latestReady =
+      latestReadiness?.can_settle === true || latestReadiness?.is_ready === true;
+
+    setReadinessTarget({
+      policyId: readinessPolicyId,
+      settlementDate: readinessDate,
+    });
+
+    if (!latestReady) {
+      setSettlementFormError(
+        "Settlement date is not ready yet. Use the next expected settlement date.",
+      );
+      return;
+    }
 
     const beforePolicy = await readPolicy(readinessPolicyId, {
       cacheTtlMs: 120_000,
@@ -812,7 +845,10 @@ function AdminOperationsContent({
             <Field label="Active Coverage">
               <select
                 className={inputClassName}
-                onChange={(event) => setReadinessPolicyId(event.target.value)}
+                onChange={(event) => {
+                  setReadinessPolicyId(event.target.value);
+                  setSettlementFormError("");
+                }}
                 required
                 value={readinessPolicyId}
               >
@@ -831,7 +867,10 @@ function AdminOperationsContent({
             <Field label="Settlement date">
               <input
                 className={inputClassName}
-                onChange={(event) => setReadinessDate(event.target.value)}
+                onChange={(event) => {
+                  setReadinessDate(event.target.value);
+                  setSettlementFormError("");
+                }}
                 required
                 type="date"
                 value={readinessDate}
@@ -851,7 +890,19 @@ function AdminOperationsContent({
                 <dl>
                   <DataRow
                     label="Ready"
-                    value={readiness.data?.can_settle ? "Yes" : "No"}
+                    value={
+                      readiness.data?.can_settle || readiness.data?.is_ready
+                        ? "Yes"
+                        : "No"
+                    }
+                  />
+                  <DataRow
+                    label="Next expected settlement date"
+                    value={
+                      readiness.data?.expected_settlement_date
+                        ? formatDate(readiness.data.expected_settlement_date)
+                        : "Not available"
+                    }
                   />
                   <DataRow
                     label="Reason"
@@ -869,13 +920,16 @@ function AdminOperationsContent({
           <h2 className="text-xl font-semibold text-text">Manual Settlement</h2>
           <p className="mt-3 text-sm leading-6 text-muted">
             Submit a settlement check for the selected policy and covered date.
-            Owner permissions are enforced by the contract.
+            Only the contract owner or settlement operator can execute settlement.
           </p>
           <form className="mt-5 grid gap-4" onSubmit={handleSettle}>
             <Field label="Active Coverage">
               <select
                 className={inputClassName}
-                onChange={(event) => setReadinessPolicyId(event.target.value)}
+                onChange={(event) => {
+                  setReadinessPolicyId(event.target.value);
+                  setSettlementFormError("");
+                }}
                 required
                 value={readinessPolicyId}
               >
@@ -894,7 +948,10 @@ function AdminOperationsContent({
             <Field label="Settlement date">
               <input
                 className={inputClassName}
-                onChange={(event) => setReadinessDate(event.target.value)}
+                onChange={(event) => {
+                  setReadinessDate(event.target.value);
+                  setSettlementFormError("");
+                }}
                 required
                 type="date"
                 value={readinessDate}
@@ -903,6 +960,8 @@ function AdminOperationsContent({
             <Button
               disabled={
                 !selectedPolicyCanSettle ||
+                !selectedDateReady ||
+                readiness.isFetching ||
                 transactionActive ||
                 settlePolicyDay.isPending
               }
@@ -916,6 +975,15 @@ function AdminOperationsContent({
               <p className="text-sm text-muted">
                 Only active coverage can be settled.
               </p>
+            ) : null}
+            {selectedPolicyCanSettle && readinessPolicyId && readinessDate && !selectedDateReady ? (
+              <p className="text-sm text-muted">
+                Check readiness first. Only the next expected settlement date can
+                be settled.
+              </p>
+            ) : null}
+            {settlementFormError ? (
+              <p className="text-sm text-amber">{settlementFormError}</p>
             ) : null}
           </form>
         </SectionCard>

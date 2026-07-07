@@ -99,8 +99,11 @@ export type ParametrixPoolStatus = ContractRecord & {
 
 export type ParametrixSettlementReadiness = ContractRecord & {
   can_settle?: boolean;
+  expected_settlement_date?: string;
   reason?: string;
+  requested_settlement_date?: string;
   settlement_date?: string;
+  is_ready?: boolean;
 };
 
 export type PurchasePolicyInput = ContractWriteOptions & {

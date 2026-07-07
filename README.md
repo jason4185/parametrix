@@ -131,6 +131,7 @@ Key read methods:
 - `get_active_policies()`
 - `get_pool_status()`
 - `get_owner()`
+- `get_settlement_operator()`
 - `get_last_policy_id()`
 - `get_policy_owner(policy_id)`
 - `get_policy_summary(policy_id)`
@@ -144,6 +145,7 @@ Key write methods:
 - `purchase_policy(location_id, policy_type, event_level, duration_days)`
 - `add_pool_funds()`
 - `withdraw_from_pool(amount_gen)`
+- `set_settlement_operator(operator_address)`
 - `cancel_policy(policy_id)`
 - `settle_policy_day(policy_id, settlement_date)`
 - `claim_payout(policy_id)`
@@ -174,14 +176,16 @@ The worker:
 
 - Reads active policies from the deployed GenLayer contract
 - Checks `get_settlement_readiness(policy_id, settlement_date)`
-- Calls `settle_policy_day(policy_id, settlement_date)` for ready policies
+- Calls `settle_policy_day(policy_id, settlement_date)` for the next expected covered date
 - Verifies state after settlement
 - Processes up to the configured max policies per run
+- Can catch up a limited number of missed covered dates per policy per run
 - Does not claim payouts for users
 
 If a policy becomes triggered, the policyholder still claims the payout manually.
 
 The cron worker is separate from the frontend. The frontend is for user and operator UI; the worker is for scheduled settlement operations.
+Settlement execution is restricted in the contract to the contract owner or configured settlement operator.
 
 ## Frontend Application
 
@@ -342,6 +346,7 @@ Contract:
 
 - Network: GenLayer Bradbury testnet
 - Contract address is configured through frontend and cron environment variables
+- After redeploying the contract, if the Cloudflare cron wallet is not the contract owner, the owner must call `set_settlement_operator("0xe93071f312347000880bb61e33733f1ca41795bb")`.
 
 ## Security and Status Notes
 
@@ -358,8 +363,8 @@ Important security notes:
 - Private keys and cron secrets must stay outside GitHub.
 - Pool withdrawal is owner-restricted in the contract.
 - Payouts are manually claimed by policyholders.
-- Settlement currently relies on a configured operator/cron worker.
-- Cron processes one configured settlement date per run; missed-date catch-up is not implemented as a full backfill system.
+- Settlement is restricted to the contract owner or configured settlement operator.
+- Cron follows contract readiness and processes a limited catch-up window for missed covered dates.
 
 ## Roadmap
 

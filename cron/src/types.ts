@@ -3,6 +3,7 @@ export type Env = {
   DRY_RUN?: string;
   GENLAYER_NETWORK?: string;
   GENLAYER_RPC_URL?: string;
+  MAX_SETTLEMENT_DAYS_PER_POLICY?: string;
   MAX_POLICIES_PER_RUN?: string;
   OPERATOR_PRIVATE_KEY?: string;
   PARAMETRIX_CONTRACT_ADDRESS?: string;
@@ -30,13 +31,18 @@ export type SettlementCronOptions = {
 
 export type SettlementReadiness = ContractRecord & {
   can_settle?: boolean;
+  expected_settlement_date?: string;
   is_ready?: boolean;
   reason?: string;
+  requested_settlement_date?: string;
 };
 
 export type PolicySettlementResult = {
   action: "dry_run" | "failed" | "settled" | "skipped";
+  catch_up_index?: number;
   error?: string;
+  expected_settlement_date?: string;
+  max_catch_up_days?: number;
   policy_id: string;
   readiness_reason?: string;
   settlement_date: string;
