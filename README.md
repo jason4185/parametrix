@@ -34,8 +34,9 @@ The frontend improves the user experience, but it is not the source of truth for
 
 ### GenLayer Features Used
 
-- `gl.nondet.web.get`: Fetches external web data from inside the Intelligent Contract. Parametrix uses it to read the official threshold registry during purchase and weather data during settlement.
-- `gl.eq_principle.strict_eq`: Validates the threshold registry read through GenLayer consensus. Validators must agree on the exact fetched registry result before the contract accepts threshold data.
+- `gl.nondet.web.get`: Fetches external web data from inside the Intelligent Contract. Parametrix uses it to read the official threshold registry during purchase.
+- `gl.eq_principle.strict_eq`: Validates threshold registry reads through GenLayer consensus. Validators must agree on the exact official threshold registry result before the contract accepts policy terms.
+- `gl.vm.run_nondet_unsafe`: Runs custom non-deterministic settlement logic with a validator function. Parametrix uses it during settlement weather checks so weather data can be fetched and validated before policy state is updated.
 - `gl.message.sender_address`: Identifies the wallet calling the contract. Parametrix uses it to assign policy ownership, restrict policyholder actions, and protect operator-only functions.
 - `gl.message.value`: Reads the GEN sent with payable transactions. Parametrix uses it to verify that the correct premium or pool funding amount was paid.
 - `@gl.public.write.payable`: Marks functions that can receive GEN. Parametrix uses it for purchasing coverage and adding funds to the underwriting pool.
