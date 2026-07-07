@@ -1,0 +1,8 @@
+PARAMETRIX_CONTRACT_ADDRESS=0x...
+GENLAYER_RPC_URL=https://rpc-bradbury.genlayer.com
+GENLAYER_NETWORK=testnetBradbury
+MAX_POLICIES_PER_RUN=25
+SETTLEMENT_DAYS_AGO=1
+DRY_RUN=true
+CRON_SECRET=replace-with-long-random-secret
+OPERATOR_PRIVATE_KEY=replace-with-test-operator-private-key

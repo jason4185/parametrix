@@ -1,0 +1,329 @@
+{
+  "version": "v1",
+  "name": "Parametrix MVP1 Official Threshold Table",
+  "description": "Official Parametrix MVP1 product-defined location-based insurance trigger thresholds. Open-Meteo provides weather data; Parametrix defines these insurance thresholds.",
+  "effective_date": "2026-07-03",
+  "weather_data_provider": {
+    "name": "Open-Meteo",
+    "query_method": "latitude_longitude",
+    "required_daily_variables": [
+      "precipitation_sum",
+      "temperature_2m_max"
+    ]
+  },
+  "policy_types": {
+    "RAINFALL_INDEX": {
+      "display_name": "Rainfall Index Policy",
+      "weather_variable": "precipitation_sum",
+      "unit": "mm",
+      "trigger_rule": "weather_value >= threshold"
+    },
+    "TEMPERATURE_INDEX": {
+      "display_name": "Temperature Index Policy",
+      "weather_variable": "temperature_2m_max",
+      "unit": "°C",
+      "trigger_rule": "weather_value >= threshold"
+    }
+  },
+  "event_levels": {
+    "SEVERE_EVENT": {
+      "display_name": "Severe Event"
+    },
+    "EXTREME_EVENT": {
+      "display_name": "Extreme Event"
+    },
+    "CRITICAL_EVENT": {
+      "display_name": "Critical Event"
+    }
+  },
+  "locations": {
+    "lagos_ng": {
+      "location_id": "lagos_ng",
+      "name": "Lagos",
+      "country": "Nigeria",
+      "country_code": "NG",
+      "continent": "Africa",
+      "latitude": 6.5244,
+      "longitude": 3.3792,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 30,
+            "EXTREME_EVENT": 60,
+            "CRITICAL_EVENT": 90
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 35,
+            "EXTREME_EVENT": 38,
+            "CRITICAL_EVENT": 41
+          }
+        }
+      }
+    },
+    "abuja_ng": {
+      "location_id": "abuja_ng",
+      "name": "Abuja",
+      "country": "Nigeria",
+      "country_code": "NG",
+      "continent": "Africa",
+      "latitude": 9.0765,
+      "longitude": 7.3986,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 25,
+            "EXTREME_EVENT": 50,
+            "CRITICAL_EVENT": 80
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 37,
+            "EXTREME_EVENT": 40,
+            "CRITICAL_EVENT": 43
+          }
+        }
+      }
+    },
+    "kano_ng": {
+      "location_id": "kano_ng",
+      "name": "Kano",
+      "country": "Nigeria",
+      "country_code": "NG",
+      "continent": "Africa",
+      "latitude": 12.0022,
+      "longitude": 8.592,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 20,
+            "EXTREME_EVENT": 40,
+            "CRITICAL_EVENT": 70
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 40,
+            "EXTREME_EVENT": 43,
+            "CRITICAL_EVENT": 46
+          }
+        }
+      }
+    },
+    "new_york_us": {
+      "location_id": "new_york_us",
+      "name": "New York",
+      "country": "United States",
+      "country_code": "US",
+      "continent": "North America",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 35,
+            "EXTREME_EVENT": 60,
+            "CRITICAL_EVENT": 90
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 35,
+            "EXTREME_EVENT": 38,
+            "CRITICAL_EVENT": 41
+          }
+        }
+      }
+    },
+    "los_angeles_us": {
+      "location_id": "los_angeles_us",
+      "name": "Los Angeles",
+      "country": "United States",
+      "country_code": "US",
+      "continent": "North America",
+      "latitude": 34.0522,
+      "longitude": -118.2437,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 20,
+            "EXTREME_EVENT": 40,
+            "CRITICAL_EVENT": 70
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 38,
+            "EXTREME_EVENT": 41,
+            "CRITICAL_EVENT": 44
+          }
+        }
+      }
+    },
+    "miami_us": {
+      "location_id": "miami_us",
+      "name": "Miami",
+      "country": "United States",
+      "country_code": "US",
+      "continent": "North America",
+      "latitude": 25.7617,
+      "longitude": -80.1918,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 40,
+            "EXTREME_EVENT": 75,
+            "CRITICAL_EVENT": 110
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 34,
+            "EXTREME_EVENT": 36,
+            "CRITICAL_EVENT": 38
+          }
+        }
+      }
+    },
+    "london_gb": {
+      "location_id": "london_gb",
+      "name": "London",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "continent": "Europe",
+      "latitude": 51.5072,
+      "longitude": -0.1276,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 25,
+            "EXTREME_EVENT": 45,
+            "CRITICAL_EVENT": 70
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 30,
+            "EXTREME_EVENT": 34,
+            "CRITICAL_EVENT": 38
+          }
+        }
+      }
+    },
+    "manchester_gb": {
+      "location_id": "manchester_gb",
+      "name": "Manchester",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "continent": "Europe",
+      "latitude": 53.4808,
+      "longitude": -2.2426,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 30,
+            "EXTREME_EVENT": 50,
+            "CRITICAL_EVENT": 75
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 29,
+            "EXTREME_EVENT": 33,
+            "CRITICAL_EVENT": 37
+          }
+        }
+      }
+    },
+    "birmingham_gb": {
+      "location_id": "birmingham_gb",
+      "name": "Birmingham",
+      "country": "United Kingdom",
+      "country_code": "GB",
+      "continent": "Europe",
+      "latitude": 52.4862,
+      "longitude": -1.8904,
+      "open_meteo_confirmed": true,
+      "policies": {
+        "RAINFALL_INDEX": {
+          "display_name": "Rainfall Index Policy",
+          "weather_variable": "precipitation_sum",
+          "unit": "mm",
+          "events": {
+            "SEVERE_EVENT": 28,
+            "EXTREME_EVENT": 48,
+            "CRITICAL_EVENT": 72
+          }
+        },
+        "TEMPERATURE_INDEX": {
+          "display_name": "Temperature Index Policy",
+          "weather_variable": "temperature_2m_max",
+          "unit": "°C",
+          "events": {
+            "SEVERE_EVENT": 30,
+            "EXTREME_EVENT": 34,
+            "CRITICAL_EVENT": 38
+          }
+        }
+      }
+    }
+  }
+}

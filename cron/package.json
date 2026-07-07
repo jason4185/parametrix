@@ -1,0 +1,18 @@
+{
+  "name": "parametrix-settlement-cron",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "genlayer-js": "^1.1.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "wrangler": "4.53.0"
+  }
+}

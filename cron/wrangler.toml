@@ -1,0 +1,14 @@
+name = "parametrix-settlement-cron"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[triggers]
+crons = ["0 1 * * *"]
+
+[vars]
+PARAMETRIX_CONTRACT_ADDRESS = "0x7cE1fa551B4d6cf78318E00d2Ca3dc4c86D22712"
+GENLAYER_RPC_URL = "https://rpc-bradbury.genlayer.com"
+GENLAYER_NETWORK = "testnetBradbury"
+MAX_POLICIES_PER_RUN = "25"
+SETTLEMENT_DAYS_AGO = "1"
+DRY_RUN = "false"
