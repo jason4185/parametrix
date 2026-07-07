@@ -34,14 +34,14 @@ The frontend improves the user experience, but it is not the source of truth for
 
 ### GenLayer Features Used
 
-- `@gl.public.write.payable`: Allows payable functions such as policy purchase and pool funding to receive GEN.
-- `gl.message.value`: Checks the GEN amount sent with a premium or pool funding transaction.
-- `gl.message.sender_address`: Identifies the policyholder, owner, or caller for ownership-sensitive actions.
-- `gl.nondet.web.get`: Fetches external data such as the threshold registry and Open-Meteo weather data.
-- `gl.eq_principle.strict_eq`: Validates threshold registry reads during purchase through GenLayer consensus.
-- `gl.public.view`: Exposes read-only contract methods for the frontend and settlement worker.
-- `gl.public.write`: Handles state-changing actions such as settlement, cancellation, claims, and withdrawals.
-- `emit_transfer`: Sends GEN payouts to policyholders and pool withdrawals to the owner.
+- `gl.nondet.web.get`: Fetches external web data from inside the Intelligent Contract. Parametrix uses it to read the official threshold registry during purchase and weather data during settlement.
+- `gl.eq_principle.strict_eq`: Validates the threshold registry read through GenLayer consensus. Validators must agree on the exact fetched registry result before the contract accepts threshold data.
+- `gl.message.sender_address`: Identifies the wallet calling the contract. Parametrix uses it to assign policy ownership, restrict policyholder actions, and protect operator-only functions.
+- `gl.message.value`: Reads the GEN sent with payable transactions. Parametrix uses it to verify that the correct premium or pool funding amount was paid.
+- `@gl.public.write.payable`: Marks functions that can receive GEN. Parametrix uses it for purchasing coverage and adding funds to the underwriting pool.
+- `gl.public.write`: Exposes state-changing contract methods such as cancelling coverage, settling a policy day, claiming payouts, and withdrawing pool funds.
+- `gl.public.view`: Exposes read-only methods used by the frontend, such as reading policies, pool status, settlement history, and settlement readiness.
+- `emit_transfer`: Sends GEN from the contract. Parametrix uses it for policy payouts and pool withdrawals.
 
 ## How Parametrix Works
 
